@@ -2,3 +2,5 @@ assets/
 venv/
 pages/
 secrets.txt
+test.py
+test2.py

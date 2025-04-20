@@ -182,7 +182,7 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.P('Smoker'), # smoker
+						html.P('Smoke'), # smoker
 						dcc.Dropdown(
 								options=[
 									{'label': 'No', 'value': 'n'},
@@ -246,7 +246,7 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.P('Cannabis'), # cannabis
+						html.P('Cannabis (กัญชา)'), # cannabis
 						dcc.Dropdown(
 								options=[
 									{'label': 'No', 'value': 'n'},
@@ -318,7 +318,7 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.P('Diabetes'), # diabetes
+						html.P('Diabetes (เบาหวาน)'), # diabetes
 						dcc.Dropdown(
 								options=[
 									{'label': 'No', 'value': 'n'},
@@ -354,7 +354,7 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.P('Asthma Attack'), # asthma
+						html.P('Asthma Attack (หอบหืด)'), # asthma
 						dcc.Dropdown(
 								options=[
 									{'label': 'No', 'value': 'n'},
@@ -367,7 +367,7 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.P('Immune Deficiency'), # immune_defic
+						html.P('Immune Deficiency (ภูมิคุ้มกันบกพร่อง)'), # immune_defic
 						dcc.Dropdown(
 								options=[
 									{'label': 'No', 'value': 'n'},
@@ -399,7 +399,7 @@ app.layout = dbc.Container(
 									{'label': 'No', 'value': 'n'},
 									{'label': 'Yes', 'value': 'y'}
 								],
-								value='',
+								# value='',
 								placeholder='Is member of your family ever have heart desease?',
 								id='dropdown-family_heart_desease',
 								style={'width': '86%'}
@@ -419,7 +419,8 @@ app.layout = dbc.Container(
 							),
 						html.Hr(),
 
-						html.Button('Submit', id='button-submit', n_clicks=0)
+						html.Button('Submit', id='button-submit', n_clicks=0),
+						html.P(children='', id='submit-text')
 
 					],
 					style=sidebar_config
@@ -532,6 +533,7 @@ def shap_waterfall_to_plotly(shap_values):
 	Output(component_id='shap-waterfall-plot', component_property='style'),
 	Output(component_id='shap-diag', component_property='children'),
 	Output(component_id='shap-diag-text', component_property='children'),
+	Output(component_id='submit-text', component_property='children'),
 	Input(component_id='button-submit', component_property='n_clicks'), # release the input when hit submit button
 	State(component_id='input-weight', component_property='value'), # hold the input untill hit submit botton
 	State(component_id='dropdown-sex', component_property='value'),
@@ -561,88 +563,101 @@ def shap_waterfall_to_plotly(shap_values):
 def update_output(n_clicks, weight, sex, height, bp, smoker, nicotin, num_meds, occup_danger,
 				is_danger, cannabis, opioids, other_drugs, drinks_aweek, addiction, major_surgery,
 				diabetes, hds, choles, asthma, immune, cancer, heart_desease, fam_choles):
-	df = pd.DataFrame.from_dict(
-			{
-				'weight': [weight],
-				'sex': [sex],
-				'height': [height],
-				'sys_bp': [bp],
-				'smoker': [smoker],
-				'nic_other': [nicotin],
-				'num_meds': [num_meds],
-				'occup_danger': [occup_danger],
-				'is_danger': [is_danger],
-				'cannabis': [cannabis],
-				'opioids': [opioids],
-				'other_drugs': [other_drugs],
-				'drinks_aweek': [drinks_aweek],
-				'addiction': [addiction],
-				'major_surgery_num': [major_surgery],
-				'diabetes': [diabetes],
-				'hds': [hds],
-				'cholesterol': [choles],
-				'asthma': [asthma],
-				'immune_defic': [immune],
-				'family_cancer': [cancer],
-				'family_heart_disease': [heart_desease],
-				'family_cholesterol': [fam_choles]
-			}
-		)
-	
-	y_preds = model.predict(df)
-	y_preds = int(y_preds[0])
+	# 23 features
+	my_list = [weight, sex, height, bp, smoker, nicotin, num_meds, occup_danger,
+				is_danger, cannabis, opioids, other_drugs, drinks_aweek, addiction, major_surgery,
+				diabetes, hds, choles, asthma, immune, cancer, heart_desease, fam_choles] 
+	print(n_clicks)
+	print(my_list)
+	# checking if user select all dropdowns before click submit button
+	if n_clicks > 0: # if user click submit button
+		if None in my_list: # there's one dropdown missing
+			return "","","","","Please fill all dropdown before submitting"
+		elif not None in my_list: # user select all dropdown
+			df = pd.DataFrame.from_dict(
+					{
+						'weight': [weight],
+						'sex': [sex],
+						'height': [height],
+						'sys_bp': [bp],
+						'smoker': [smoker],
+						'nic_other': [nicotin],
+						'num_meds': [num_meds],
+						'occup_danger': [occup_danger],
+						'is_danger': [is_danger],
+						'cannabis': [cannabis],
+						'opioids': [opioids],
+						'other_drugs': [other_drugs],
+						'drinks_aweek': [drinks_aweek],
+						'addiction': [addiction],
+						'major_surgery_num': [major_surgery],
+						'diabetes': [diabetes],
+						'hds': [hds],
+						'cholesterol': [choles],
+						'asthma': [asthma],
+						'immune_defic': [immune],
+						'family_cancer': [cancer],
+						'family_heart_disease': [heart_desease],
+						'family_cholesterol': [fam_choles]
+					}
+				)
+			
+			y_preds = model.predict(df)
+			y_preds = int(y_preds[0])
 
-	# preprocess step before SHAP
-	# extract preprocess step from pipeline
-	pipeline_preprocess = model.named_steps['pipeline'][2]
-	
-	# get feature name from OHE
-	feature_names = pipeline_preprocess.get_feature_names_out() 
-	
-	# perform OHE on df
-	df_OHE = pipeline_preprocess.transform(df) 
-	
-	# create dataframe from df OHE
-	df_transformed = pd.DataFrame(df_OHE, columns=feature_names) 
+			# preprocess step before SHAP
+			# extract preprocess step from pipeline
+			pipeline_preprocess = model.named_steps['pipeline'][2]
+			
+			# get feature name from OHE
+			feature_names = pipeline_preprocess.get_feature_names_out() 
+			
+			# perform OHE on df
+			df_OHE = pipeline_preprocess.transform(df) 
+			
+			# create dataframe from df OHE
+			df_transformed = pd.DataFrame(df_OHE, columns=feature_names) 
 
-	# SHAP
-	# Extract only model from Pipeline
-	cat_model = model.named_steps['cat']
+			# SHAP
+			# Extract only model from Pipeline
+			cat_model = model.named_steps['cat']
 
-	# Initialize the SHAP explainer
-	explainer = shap.Explainer(cat_model)
+			# Initialize the SHAP explainer
+			explainer = shap.Explainer(cat_model)
 
-	# Compute SHAP values
-	shap_values = explainer(df_transformed)
+			# Compute SHAP values
+			shap_values = explainer(df_transformed)
 
-	new_feature_name = shap_waterfall_to_plotly(shap_values)[1] # return array of new feature names base on user input
-	new_values = shap_waterfall_to_plotly(shap_values)[2] # return array of new values after sorted descending 
+			new_feature_name = shap_waterfall_to_plotly(shap_values)[1] # return array of new feature names base on user input
+			new_values = shap_waterfall_to_plotly(shap_values)[2] # return array of new values after sorted descending 
 
-	text = ['-------------------------------------------------',
-		html.Br(),
-		html.Span('Attention! How to read SHAP Value', style={'font-weight': 'bold'}),
-		html.Br(),
-		'1) If your age are longer than the average age then you should live longer than average people',
-		html.Br(),
-		'2) The number score of the factors indicate how much that factor contribute to your age if it is positive sign \
-		then that factor contribute positive impact to your age and vice versa.',
-		html.Br(),
-		'-------------------------------------------------',
-		html.Br(),
-		html.Span(f'Your predicted age of death is {y_preds}.',style={'color':'red'}),
-		html.Br(),
-		html.Span('While the average age from the training data is 64.',style={'color':'blue'}),
-		html.Br(),
-		html.Br(),
-		'The factors (most to least) which effect your age are:',
-		html.Br(),
-		html.Br(),
-		*[html.P(f'{feature}, {value:.2f}') for feature,value in zip(new_feature_name, new_values)]]
-	
-	return shap_waterfall_to_plotly(shap_values)[0], \
-			{'display': 'block'}, \
-			'Diagnostics', \
-			text
+			text = ['-------------------------------------------------',
+				html.Br(),
+				html.Span('Attention! How to read SHAP Value', style={'font-weight': 'bold'}),
+				html.Br(),
+				'1) If your age are longer than the average age then you should live longer than average people',
+				html.Br(),
+				'2) The number score of the factors indicate how much that factor contribute to your age if it is positive sign \
+				then that factor contribute positive impact to your age and vice versa.',
+				html.Br(),
+				'-------------------------------------------------',
+				html.Br(),
+				html.Span(f'Your predicted age of death is {y_preds}.',style={'color':'red'}),
+				html.Br(),
+				html.Span('While the average age from the training data is 64.',style={'color':'blue'}),
+				html.Br(),
+				html.Br(),
+				'The factors (most to least) which effect your age are:',
+				html.Br(),
+				html.Br(),
+				*[html.P(f'{feature}, {value:.2f}') for feature,value in zip(new_feature_name, new_values)]]
+			
+			return shap_waterfall_to_plotly(shap_values)[0], \
+					{'display': 'block'}, \
+					'Diagnostics', \
+					text,\
+					'Submitted successfully, please scroll up to see result'
+	return "","","","","please select all dropdown"
 
 
 if __name__ == '__main__':
